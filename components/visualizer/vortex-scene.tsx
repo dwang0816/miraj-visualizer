@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -24,7 +24,7 @@ interface VortexSceneProps {
   visualStyle: number
 }
 
-export default function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: VortexSceneProps) {
+function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: VortexSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const ringsRef = useRef<THREE.LineLoop[]>([])
   const spiralsRef = useRef<THREE.Line[]>([])
@@ -122,6 +122,19 @@ export default function VortexScene({ bass, subBass, mid, high, bassEnergy, bass
     () => new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }),
     []
   )
+
+  useEffect(() => {
+    return () => {
+      ringGeometries.forEach(g => g.dispose())
+      ringMaterials.forEach(m => m.dispose())
+      spiralGeometries.forEach(g => g.dispose())
+      spiralMaterials.forEach(m => m.dispose())
+      shapeGeometries.forEach(g => g.dispose())
+      shapeMaterials.forEach(m => m.dispose())
+      shockwaveGeo.dispose()
+      shockwaveMat.dispose()
+    }
+  }, [ringGeometries, ringMaterials, spiralGeometries, spiralMaterials, shapeGeometries, shapeMaterials, shockwaveGeo, shockwaveMat])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -274,8 +287,8 @@ export default function VortexScene({ bass, subBass, mid, high, bassEnergy, bass
       {spiralGeometries.map((geo, i) => (
         <line
           key={`spiral-${i}`}
-          // @ts-expect-error - R3F line element
           ref={(el: any) => { if (el) spiralsRef.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={spiralMaterials[i]}
         />
@@ -296,3 +309,5 @@ export default function VortexScene({ bass, subBass, mid, high, bassEnergy, bass
     </group>
   )
 }
+
+export default memo(VortexScene)

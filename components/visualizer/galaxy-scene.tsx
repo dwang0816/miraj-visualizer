@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -22,7 +22,7 @@ interface GalaxySceneProps {
   visualStyle: number
 }
 
-export default function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: GalaxySceneProps) {
+function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: GalaxySceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const discRef = useRef<THREE.Mesh>(null)
   const ringsRef = useRef<THREE.LineLoop[]>([])
@@ -136,6 +136,17 @@ export default function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bass
       })
     )
   }, [])
+
+  useEffect(() => {
+    return () => {
+      ringGeometries.forEach(g => g.dispose())
+      ringMaterials.forEach(m => m.dispose())
+      radialGeometries.forEach(g => g.dispose())
+      radialMaterials.forEach(m => m.dispose())
+      layerGeometries.forEach(g => g.dispose())
+      layerMaterials.forEach(m => m.dispose())
+    }
+  }, [ringGeometries, ringMaterials, radialGeometries, radialMaterials, layerGeometries, layerMaterials])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -269,8 +280,8 @@ export default function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bass
       {radialGeometries.map((geo, i) => (
         <line
           key={`rad-${i}`}
-          // @ts-expect-error - R3F line element
           ref={(el: any) => { if (el) radialsRef.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={radialMaterials[i]}
         />
@@ -286,3 +297,5 @@ export default function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bass
     </group>
   )
 }
+
+export default memo(GalaxyScene)

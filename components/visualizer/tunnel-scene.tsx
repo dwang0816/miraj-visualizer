@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -25,7 +25,7 @@ interface TunnelSceneProps {
   visualStyle: number
 }
 
-export default function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: TunnelSceneProps) {
+function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: TunnelSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const ringsRef = useRef<THREE.Mesh[]>([])
   const particlesRef = useRef<THREE.Points>(null)
@@ -118,6 +118,17 @@ export default function TunnelScene({ bass, subBass, mid, high, bassEnergy, bass
       }),
     []
   )
+
+  useEffect(() => {
+    return () => {
+      ringGeometry.dispose()
+      particleGeometry.dispose()
+      sparkGeometry.dispose()
+      sparkMaterial.dispose()
+      particleMaterial.dispose()
+      ringMaterials.forEach(m => m.dispose())
+    }
+  }, [ringGeometry, particleGeometry, sparkGeometry, sparkMaterial, particleMaterial, ringMaterials])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -275,3 +286,5 @@ export default function TunnelScene({ bass, subBass, mid, high, bassEnergy, bass
     </group>
   )
 }
+
+export default memo(TunnelScene)

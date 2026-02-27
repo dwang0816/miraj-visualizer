@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -20,7 +20,7 @@ interface RingsSceneProps {
   visualStyle: number
 }
 
-export default function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: RingsSceneProps) {
+function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: RingsSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const shapesRef = useRef<THREE.Mesh[]>([])
   const crossRef = useRef<THREE.Line[]>([])
@@ -77,6 +77,15 @@ export default function RingsScene({ bass, subBass, mid, high, bassEnergy, bassI
       })
     )
   }, [])
+
+  useEffect(() => {
+    return () => {
+      shapeGeometries.forEach(g => g.dispose())
+      shapeMaterials.forEach(m => m.dispose())
+      crossGeometries.forEach(g => g.dispose())
+      crossMaterials.forEach(m => m.dispose())
+    }
+  }, [shapeGeometries, shapeMaterials, crossGeometries, crossMaterials])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -160,8 +169,8 @@ export default function RingsScene({ bass, subBass, mid, high, bassEnergy, bassI
       {crossGeometries.map((geo, i) => (
         <line
           key={`cross-${i}`}
-          // @ts-expect-error - R3F line element
           ref={(el: any) => { if (el) crossRef.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={crossMaterials[i]}
         />
@@ -169,3 +178,5 @@ export default function RingsScene({ bass, subBass, mid, high, bassEnergy, bassI
     </group>
   )
 }
+
+export default memo(RingsScene)

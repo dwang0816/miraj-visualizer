@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -22,7 +22,7 @@ interface SphereSceneProps {
   visualStyle: number
 }
 
-export default function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: SphereSceneProps) {
+function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: SphereSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const pointsRef = useRef<THREE.Points>(null)
   const orbitRefs = useRef<THREE.Line[]>([])
@@ -128,6 +128,17 @@ export default function SphereScene({ bass, subBass, mid, high, bassEnergy, bass
       }),
     []
   )
+
+  useEffect(() => {
+    return () => {
+      pointsGeometry.dispose()
+      pointsMaterial.dispose()
+      trailGeometry.dispose()
+      trailMaterial.dispose()
+      orbitGeometries.forEach(g => g.dispose())
+      orbitMaterials.forEach(m => m.dispose())
+    }
+  }, [pointsGeometry, pointsMaterial, trailGeometry, trailMaterial, orbitGeometries, orbitMaterials])
 
   useFrame((_, delta) => {
     if (!pointsRef.current) return
@@ -285,10 +296,8 @@ export default function SphereScene({ bass, subBass, mid, high, bassEnergy, bass
       {orbitGeometries.map((geo, i) => (
         <line
           key={i}
-          // @ts-expect-error - R3F line element
-          ref={(el: THREE.Line) => {
-            if (el) orbitRefs.current[i] = el
-          }}
+          ref={(el: any) => { if (el) orbitRefs.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={orbitMaterials[i]}
         />
@@ -297,3 +306,5 @@ export default function SphereScene({ bass, subBass, mid, high, bassEnergy, bass
     </group>
   )
 }
+
+export default memo(SphereScene)

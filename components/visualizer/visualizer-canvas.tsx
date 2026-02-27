@@ -1,21 +1,22 @@
 "use client"
 
-import { useRef, useCallback, useEffect, useState } from "react"
+import { useRef, useCallback, useEffect, useState, lazy, Suspense } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { EffectComposer, Bloom } from "@react-three/postprocessing"
 import { type ColorMode, COLOR_MODE_LIST } from "@/lib/color-palettes"
-import TunnelScene from "./tunnel-scene"
-import WaveformScene from "./waveform-scene"
-import SphereScene from "./sphere-scene"
-import HelixScene from "./helix-scene"
-import GalaxyScene from "./galaxy-scene"
-import FractalScene from "./fractal-scene"
-import RingsScene from "./rings-scene"
-import TerrainScene from "./terrain-scene"
-import MatrixScene from "./matrix-scene"
-import VortexScene from "./vortex-scene"
 import ControlsOverlay from "./controls-overlay"
 import { AudioAnalyzer, type AudioDeviceInfo, type AudioSourceType } from "@/lib/audio-analyzer"
+
+const TunnelScene = lazy(() => import("./tunnel-scene"))
+const WaveformScene = lazy(() => import("./waveform-scene"))
+const SphereScene = lazy(() => import("./sphere-scene"))
+const HelixScene = lazy(() => import("./helix-scene"))
+const GalaxyScene = lazy(() => import("./galaxy-scene"))
+const FractalScene = lazy(() => import("./fractal-scene"))
+const RingsScene = lazy(() => import("./rings-scene"))
+const TerrainScene = lazy(() => import("./terrain-scene"))
+const MatrixScene = lazy(() => import("./matrix-scene"))
+const VortexScene = lazy(() => import("./vortex-scene"))
 
 // ────────────────────────────────────────
 // Scene definitions
@@ -425,18 +426,20 @@ export default function VisualizerCanvas() {
         <fog attach="fog" args={["#030303", 5, 40]} />
         <ambientLight intensity={0.1} />
 
-        <ActiveScene
-          sceneId={activeScene}
-          bass={audioState.bass}
-          subBass={audioState.subBass}
-          mid={audioState.mid}
-          high={audioState.high}
-          bassEnergy={audioState.bassEnergy}
-          bassImpact={audioState.bassImpact}
-          colorMode={colorMode}
-          dropMode={dropMode}
-          visualStyle={visualStyle}
-        />
+        <Suspense fallback={null}>
+          <ActiveScene
+            sceneId={activeScene}
+            bass={audioState.bass}
+            subBass={audioState.subBass}
+            mid={audioState.mid}
+            high={audioState.high}
+            bassEnergy={audioState.bassEnergy}
+            bassImpact={audioState.bassImpact}
+            colorMode={colorMode}
+            dropMode={dropMode}
+            visualStyle={visualStyle}
+          />
+        </Suspense>
 
         {/* Post-processing bloom - tuned for comfortable viewing */}
         <EffectComposer>

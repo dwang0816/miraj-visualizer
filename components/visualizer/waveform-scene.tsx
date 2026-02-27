@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -23,7 +23,7 @@ interface WaveformSceneProps {
   visualStyle: number
 }
 
-export default function WaveformScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: WaveformSceneProps) {
+function WaveformScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: WaveformSceneProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const mistRef = useRef<THREE.Points>(null)
   const groupRef = useRef<THREE.Group>(null)
@@ -75,6 +75,15 @@ export default function WaveformScene({ bass, subBass, mid, high, bassEnergy, ba
       }),
     []
   )
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose()
+      material.dispose()
+      mistGeometry.dispose()
+      mistMaterial.dispose()
+    }
+  }, [geometry, material, mistGeometry, mistMaterial])
 
   useFrame((_, delta) => {
     if (!meshRef.current) return
@@ -194,3 +203,5 @@ export default function WaveformScene({ bass, subBass, mid, high, bassEnergy, ba
     </group>
   )
 }
+
+export default memo(WaveformScene)

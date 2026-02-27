@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, memo } from "react"
 import {
   Mic,
   MicOff,
@@ -73,7 +73,7 @@ const SCENE_ICONS: Record<SceneId, string> = {
   vortex: "\u058D",
 }
 
-export default function ControlsOverlay({
+export default memo(function ControlsOverlay({
   micActive,
   sourceType,
   onStartDevice,
@@ -574,7 +574,7 @@ export default function ControlsOverlay({
       )}
     </div>
   )
-}
+})
 
 function LevelBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (

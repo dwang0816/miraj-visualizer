@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -25,7 +25,7 @@ interface MatrixSceneProps {
   visualStyle: number
 }
 
-export default function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: MatrixSceneProps) {
+function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: MatrixSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const layersRef = useRef<THREE.Mesh[]>([])
   const shapesRef = useRef<THREE.Mesh[]>([])
@@ -119,6 +119,17 @@ export default function MatrixScene({ bass, subBass, mid, high, bassEnergy, bass
       })
     )
   }, [])
+
+  useEffect(() => {
+    return () => {
+      layerGeometries.forEach(g => g.dispose())
+      layerMaterials.forEach(m => m.dispose())
+      shapeGeometries.forEach(g => g.dispose())
+      shapeMaterials.forEach(m => m.dispose())
+      scanGeometries.forEach(g => g.dispose())
+      scanMaterials.forEach(m => m.dispose())
+    }
+  }, [layerGeometries, layerMaterials, shapeGeometries, shapeMaterials, scanGeometries, scanMaterials])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -246,8 +257,8 @@ export default function MatrixScene({ bass, subBass, mid, high, bassEnergy, bass
       {scanGeometries.map((geo, i) => (
         <line
           key={`scan-${i}`}
-          // @ts-expect-error - R3F line element
           ref={(el: any) => { if (el) scanRef.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={scanMaterials[i]}
         />
@@ -255,3 +266,5 @@ export default function MatrixScene({ bass, subBass, mid, high, bassEnergy, bass
     </group>
   )
 }
+
+export default memo(MatrixScene)

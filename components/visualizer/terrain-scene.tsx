@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -31,7 +31,7 @@ function fbm(x: number, z: number, t: number): number {
   return val
 }
 
-export default function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: TerrainSceneProps) {
+function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: TerrainSceneProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const particlesRef = useRef<THREE.Points>(null)
   const timeRef = useRef(0)
@@ -92,6 +92,15 @@ export default function TerrainScene({ bass, subBass, mid, high, bassEnergy, bas
       }),
     []
   )
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose()
+      material.dispose()
+      particleGeometry.dispose()
+      particleMaterial.dispose()
+    }
+  }, [geometry, material, particleGeometry, particleMaterial])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -175,7 +184,6 @@ export default function TerrainScene({ bass, subBass, mid, high, bassEnergy, bas
 
     pos.needsUpdate = true
     col.needsUpdate = true
-    geometry.computeVertexNormals()
 
     // No mesh movement needed — scroll is handled by the noise offset
 
@@ -218,3 +226,5 @@ export default function TerrainScene({ bass, subBass, mid, high, bassEnergy, bas
     </group>
   )
 }
+
+export default memo(TerrainScene)

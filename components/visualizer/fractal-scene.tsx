@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -58,7 +58,7 @@ function buildTree(): FNode[] {
   return nodes
 }
 
-export default function FractalScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: FractalSceneProps) {
+function FractalScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: FractalSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const wireShapesRef = useRef<THREE.Mesh[]>([])
   const connectionsRef = useRef<THREE.LineSegments>(null)
@@ -134,6 +134,15 @@ export default function FractalScene({ bass, subBass, mid, high, bassEnergy, bas
       depth: n.depth,
     }))
   }, [nodes])
+
+  useEffect(() => {
+    return () => {
+      shapeGeometries.forEach(g => g.dispose())
+      shapeMaterials.forEach(m => m.dispose())
+      connectionGeometry.dispose()
+      connectionMaterial.dispose()
+    }
+  }, [shapeGeometries, shapeMaterials, connectionGeometry, connectionMaterial])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -244,3 +253,5 @@ export default function FractalScene({ bass, subBass, mid, high, bassEnergy, bas
     </group>
   )
 }
+
+export default memo(FractalScene)

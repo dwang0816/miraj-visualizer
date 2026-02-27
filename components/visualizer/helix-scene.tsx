@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useMemo } from "react"
+import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
@@ -25,7 +25,7 @@ interface HelixSceneProps {
   visualStyle: number
 }
 
-export default function HelixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: HelixSceneProps) {
+function HelixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMode, dropMode, visualStyle }: HelixSceneProps) {
   const groupRef = useRef<THREE.Group>(null)
   const strand1Ref = useRef<THREE.Line>(null)
   const strand2Ref = useRef<THREE.Line>(null)
@@ -136,6 +136,21 @@ export default function HelixScene({ bass, subBass, mid, high, bassEnergy, bassI
       })
     )
   }, [])
+
+  useEffect(() => {
+    return () => {
+      strand1Geo.dispose()
+      strand2Geo.dispose()
+      strandMat1.dispose()
+      strandMat2.dispose()
+      nodeGeometries.forEach(g => g.dispose())
+      nodeMaterials.forEach(m => m.dispose())
+      crossGeometries.forEach(g => g.dispose())
+      crossMaterials.forEach(m => m.dispose())
+      ringGeometries.forEach(g => g.dispose())
+      ringMaterials.forEach(m => m.dispose())
+    }
+  }, [strand1Geo, strand2Geo, strandMat1, strandMat2, nodeGeometries, nodeMaterials, crossGeometries, crossMaterials, ringGeometries, ringMaterials])
 
   useFrame((_, delta) => {
     timeRef.current += delta
@@ -373,8 +388,8 @@ export default function HelixScene({ bass, subBass, mid, high, bassEnergy, bassI
       {crossGeometries.map((geo, i) => (
         <line
           key={`cross-${i}`}
-          // @ts-expect-error - R3F line element
           ref={(el: any) => { if (el) crossRef.current[i] = el }}
+          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={crossMaterials[i]}
         />
@@ -391,3 +406,5 @@ export default function HelixScene({ bass, subBass, mid, high, bassEnergy, bassI
     </group>
   )
 }
+
+export default memo(HelixScene)
