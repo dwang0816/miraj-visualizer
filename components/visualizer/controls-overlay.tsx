@@ -32,6 +32,8 @@ interface ControlsOverlayProps {
   onRefreshDevices: () => void
   sensitivity: number
   onSensitivityChange: (v: number) => void
+  autoGain: boolean
+  onAutoGainToggle: () => void
   colorMode: ColorMode
   onColorModeChange: (mode: ColorMode) => void
   visualStyle: number
@@ -52,19 +54,19 @@ interface ControlsOverlayProps {
 }
 
 const COLOR_OPTIONS: { value: ColorMode; label: string; swatch: string }[] = [
-  { value: "neon", label: "Neon", swatch: "#00ffff" },
-  { value: "inferno", label: "Inferno", swatch: "#ff6600" },
-  { value: "arctic", label: "Arctic", swatch: "#00ccff" },
-  { value: "ultraviolet", label: "UV", swatch: "#cc00ff" },
-  { value: "emerald", label: "Emerald", swatch: "#00ff66" },
-  { value: "sunset", label: "Sunset", swatch: "#ffaa22" },
+  { value: "euphoria", label: "Euphoria", swatch: "#aa00ff" },
+  { value: "desire",   label: "Desire",   swatch: "#ff0066" },
+  { value: "reverie",  label: "Reverie",  swatch: "#00aaff" },
+  { value: "rapture",  label: "Rapture",  swatch: "#cc00ff" },
+  { value: "delirium", label: "Delirium", swatch: "#00ff88" },
+  { value: "solstice", label: "Solstice", swatch: "#ffee00" },
 ]
 
 const SCENE_ICONS: Record<SceneId, string> = {
   tunnel: "\u25CE",
   waveform: "\u2261",
   sphere: "\u25CF",
-  helix: "\u2742",
+  tripleTorus: "\u2B24",
   galaxy: "\u2726",
   fractal: "\u2698",
   rings: "\u25D4",
@@ -84,6 +86,8 @@ export default memo(function ControlsOverlay({
   onRefreshDevices,
   sensitivity,
   onSensitivityChange,
+  autoGain,
+  onAutoGainToggle,
   colorMode,
   onColorModeChange,
   visualStyle,
@@ -444,20 +448,32 @@ export default memo(function ControlsOverlay({
           {/* Divider */}
           <div className="h-6 w-px bg-[#ffffff10]" />
 
-          {/* Sensitivity slider */}
+          {/* Sensitivity slider + auto-gain toggle */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wider text-[#666]">Sens</span>
             <input
               type="range"
-              min={0.1}
-              max={3}
+              min={0.05}
+              max={5}
               step={0.05}
               value={sensitivity}
               onChange={(e) => onSensitivityChange(parseFloat(e.target.value))}
               className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-[#ffffff15] accent-[#00ffff] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00ffff]"
               aria-label="Audio sensitivity"
             />
-            <span className="w-6 text-right text-[10px] tabular-nums text-[#555]">{sensitivity.toFixed(1)}</span>
+            <span className={`w-6 text-right text-[10px] tabular-nums ${autoGain ? "text-[#00ffcc]" : "text-[#555]"}`}>{sensitivity.toFixed(1)}</span>
+            <button
+              onClick={onAutoGainToggle}
+              className={`flex h-5 items-center rounded px-1.5 text-[9px] font-medium uppercase tracking-wider transition-all ${
+                autoGain
+                  ? "bg-[#00ffcc18] text-[#00ffcc]"
+                  : "text-[#444] hover:text-[#888]"
+              }`}
+              aria-label="Auto-gain: automatically adjust sensitivity to match audio level"
+              title="Auto-adjust sensitivity to audio level"
+            >
+              AG
+            </button>
           </div>
 
           {/* Divider */}
@@ -522,8 +538,8 @@ export default memo(function ControlsOverlay({
                 ? "bg-[#ff71ce15] text-[#ff71ce]"
                 : "text-[#555] hover:text-[#999]"
             }`}
-            aria-label="Auto-rotate: randomize everything every 15 seconds"
-            title="Randomize scene, color, style & sensitivity every 15s"
+            aria-label="Auto-rotate: randomize scene, color and style every 15 seconds"
+            title="Randomize scene, color & style every 15s"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />

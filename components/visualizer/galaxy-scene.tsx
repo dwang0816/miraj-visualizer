@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 const RING_COUNT = 18
 const SEGMENTS = 96
@@ -171,14 +171,25 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
         let h = 0
         if (visualStyle === 0) {
-          h = Math.sin(angle * 3 + t * 1.5 + i * 0.5) * (0.1 + bassEnergy * 0.4 * dm)
-          h += Math.sin(radius * 0.8 - t * 2) * subBass * 0.3
+          // Smooth: all rings bob up/down in a single synchronized radial wave
+          h = Math.sin(radius * 0.6 - t * 1.8) * (0.08 + bassEnergy * 0.32 * dm)
+          h += subBass * 0.15 * Math.sin(t * 1.2 + i * 0.25)
         } else if (visualStyle === 1) {
-          h = Math.sin(angle * 2 + radius * 0.5 - t * 2) * (0.15 + bassEnergy * 0.3 * dm)
-          h += Math.cos(angle * 5 + t * 3) * bassImpact * 0.2
+          // Slight disorder: 3-lobe asymmetric pattern that rotates and drifts
+          h = Math.sin(angle * 3 + radius * 0.4 - t * 2.2) * (0.14 + bassEnergy * 0.45 * dm)
+          h += Math.cos(angle * 5 + t * 3.5) * bassImpact * 0.28
+          h += Math.sin(radius * 1.0 - t * 1.5) * subBass * 0.22
         } else {
-          const wave = Math.sin(radius - t * 3 + angle * 2) * (0.2 + bassEnergy * 0.35 * dm)
-          h = wave + Math.sin(angle * 6 + t) * subBass * 0.15
+          // Chaos: rings lock at random heights, then slowly stutter to new frozen positions
+          const riv   = Math.sin(i * 127.1) * 43758.5453
+          const rv    = riv - Math.floor(riv)
+          const slowT = Math.floor(t * 0.9) / 0.9   // snaps ~every 1.1 s
+          const wildH = Math.sin(rv * 20 + slowT * 0.8) * Math.cos(angle * 3 + rv * 15 + slowT * 0.6)
+          h = wildH * (0.45 + bassEnergy * 2.2 * dm) + bassImpact * (rv > 0.5 ? 1.6 : -1.2) * dm
+          h += Math.sin(angle * 8 + slowT * 1.5) * high * 0.4
+          const siv = Math.sin(s * 71.1 + i * 127.1) * 43758.5453
+          const sv  = siv - Math.floor(siv)
+          if (sv > 0.78) h += Math.sign(wildH) * bassEnergy * 1.8 * dm
         }
 
         pArr[s * 3] = Math.cos(angle + spiralOffset) * radius
@@ -186,8 +197,7 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         pArr[s * 3 + 2] = Math.sin(angle + spiralOffset) * radius
 
         const ct = (progress + angle / (Math.PI * 2) * 0.3 + t * 0.04) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-        else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+        samplePalette(palette, ct, tc)
         const bri = 0.3 + (1 - progress) * 0.4 + bassEnergy * 0.15 * dm
         cArr[s * 3] = tc.r * bri
         cArr[s * 3 + 1] = tc.g * bri
@@ -213,8 +223,7 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       pArr[4] = h
 
       const ct = (i / RADIAL_LINES + t * 0.03) % 1
-      if (ct < 0.5) tc.lerpColors(palette.a, palette.c, ct * 2)
-      else tc.lerpColors(palette.c, palette.b, (ct - 0.5) * 2)
+      samplePalette(palette, ct + 0.5, tc)
       const bri = 0.15 + bassEnergy * 0.1
       cArr[0] = tc.r * bri * 1.5; cArr[1] = tc.g * bri * 1.5; cArr[2] = tc.b * bri * 1.5
       cArr[3] = tc.r * bri * 0.3; cArr[4] = tc.g * bri * 0.3; cArr[5] = tc.b * bri * 0.3
@@ -247,8 +256,7 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
           const rNorm = r / rings
           const ct = (rNorm + t * 0.03 + layer * 0.15) % 1
-          if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-          else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+          samplePalette(palette, ct, tc)
           const bri = 0.15 + (1 - rNorm) * 0.2 + bassEnergy * 0.08
           cArr[idx * 3] = tc.r * bri
           cArr[idx * 3 + 1] = tc.g * bri

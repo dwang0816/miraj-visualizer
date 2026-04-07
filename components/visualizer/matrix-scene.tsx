@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 const GRID_COLS = 60
 const GRID_ROWS = 80
@@ -160,33 +160,38 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         let z = layerDepth
 
         if (visualStyle === 0) {
-          z += Math.sin(colNorm * 6 + scrollY * 0.3 + t * 2) * (0.2 + bassEnergy * 0.8) * dm
-          z += Math.sin(rowNorm * 4 - t * 3) * subBass * 0.3
-          if (bassImpact > 0.4) {
-            const cellHash = Math.sin(Math.floor(colNorm * 20) * 127.1) * 43758.5453
-            const cellVal = cellHash - Math.floor(cellHash)
-            if (cellVal > 0.85) z += bassImpact * 1.5 * dm
-          }
+          // Smooth: clean sine undulation in Z-depth — no glitch, no eruptions
+          z += Math.sin(colNorm * 3.0 + t * 1.5) * (0.12 + bassEnergy * 0.55) * dm
+          z += Math.cos(scrollY * 0.3 + t * 1.0) * subBass * 0.18
         } else if (visualStyle === 1) {
-          const sweep = Math.sin(colNorm * Math.PI * 2 - t * 2) * 0.5 + 0.5
-          z += sweep * (0.3 + bassEnergy * 1.2) * dm
-          z += Math.cos(scrollY * 0.5 + t * 1.5) * subBass * 0.4
+          // Slight disorder: horizontal sweep wave + column burst on hard hits
+          const sweep = Math.sin(colNorm * Math.PI * 2 - t * 2.5) * 0.5 + 0.5
+          z += sweep * (0.22 + bassEnergy * 1.0) * dm
+          z += Math.cos(scrollY * 0.5 + t * 1.5) * subBass * 0.3
+          if (bassImpact > 0.35) {
+            const ch = Math.sin(Math.floor(colNorm * 20) * 127.1) * 43758.5453
+            const cv = ch - Math.floor(ch)
+            if (cv > 0.75) z += bassImpact * 1.8 * dm
+          }
         } else {
-          const cellX = Math.floor(colNorm * 15)
-          const cellY = Math.floor(rowNorm * 20)
-          const cellHash = Math.sin(cellX * 127.1 + cellY * 311.7) * 43758.5453
-          const cellVal = cellHash - Math.floor(cellHash)
-          const glitch = Math.sin(t * 8 + cellVal * 30) > 0.7 ? 1 : 0
-          z += glitch * bassEnergy * 1.5 * dm + cellVal * subBass * 0.4
-          z += Math.sin(cellVal * 10 + t * 5) * bassImpact * 0.5
+          // Chaos: grid corrupts slowly — cells lock in glitched Z position, then stutter
+          const cellX    = Math.floor(colNorm * 18)
+          const cellY2   = Math.floor(rowNorm * 25)
+          const cellHash = Math.sin(cellX * 127.1 + cellY2 * 311.7) * 43758.5453
+          const cellVal  = cellHash - Math.floor(cellHash)
+          const slowT    = Math.floor(t * 1.0) / 1.0   // snaps ~every 1 s
+          const glitchRate = Math.sin(slowT * 2.0 + cellVal * 30)
+          const hardGlitch = glitchRate > 0.45 ? 1 : (glitchRate < -0.45 ? -1 : 0)
+          z += hardGlitch * bassEnergy * 2.8 * dm + cellVal * (bassEnergy * 0.9 + 0.08)
+          z += Math.sin(cellVal * 15 + slowT * 1.5) * bassImpact * 1.8
+          z += (cellVal > 0.72 ? -1 : 0) * bassEnergy * 2.0 * dm
         }
 
         pArr[i * 3 + 2] = z
 
         const depth = Math.abs(z - layerDepth)
         const ct = ((scrollY * 0.05 + colNorm * 0.3 + t * 0.03 + layer * 0.2) % 1 + 1) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-        else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+        samplePalette(palette, ct, tc)
         const bri = 0.12 + depth * 0.35 + rowNorm * 0.12 + bassEnergy * 0.1
         cArr[i * 3] = tc.r * bri
         cArr[i * 3 + 1] = tc.g * bri
@@ -217,8 +222,7 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       mesh.scale.setScalar(pulse)
 
       const ct = (i / FALLING_SHAPES + t * 0.06) % 1
-      if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-      else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+      samplePalette(palette, ct, tc)
       shapeMaterials[i].color.copy(tc)
       shapeMaterials[i].opacity = 0.15 + bassEnergy * 0.2 + bassImpact * 0.1
     })

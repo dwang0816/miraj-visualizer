@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 const RING_COUNT = 24
 const RING_SEGMENTS = 48
@@ -183,26 +183,34 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         const angle = (s / RING_SEGMENTS) * Math.PI * 2 + twist
         let r = baseRadius
 
+        let chaosY = 0
         if (visualStyle === 0) {
-          r += Math.sin(angle * 3 + t * 2 + i * 0.4) * (0.1 + bassEnergy * 0.3) * dm
+          // Smooth: single clean sine ripple around each ring — gentle, hypnotic
+          r += Math.sin(angle * 2 + t * 1.5 + i * 0.3) * (0.08 + bassEnergy * 0.28) * dm
         } else if (visualStyle === 1) {
-          r += Math.sin(t * 3 + i * 0.5) * bassEnergy * 0.5 * dm
-          r += bassImpact * 0.3
+          // Slight disorder: multi-freq ripples + each ring pulses at its own rate
+          r += Math.sin(angle * 4 + t * 2.5 + i * 0.5) * (0.12 + bassEnergy * 0.42) * dm
+          r += Math.cos(angle * 2 - t * 1.8 + i * 0.7) * mid * 0.22 * dm
+          r += bassImpact * 0.45 * Math.sin(angle + t * 3 + i * 0.4)
         } else {
-          const segHash = Math.sin(Math.floor(s / 8) * 127.1 + i * 311.7) * 43758.5453
-          const segVal = segHash - Math.floor(segHash)
-          r += segVal * bassEnergy * 0.6 * dm + (segVal > 0.7 ? bassImpact * 0.8 : 0)
+          // Chaos: ring segments freeze in corrupted positions, slowly stutter to next state
+          const seg    = Math.floor(s / 4)
+          const sh     = Math.sin(seg * 127.1 + i * 311.7) * 43758.5453
+          const sv     = sh - Math.floor(sh)
+          const slowT  = Math.floor(t * 1.0) / 1.0   // snaps ~every 1 s
+          const isGlitch = Math.sin(slowT * 1.5 + sv * 22) > 0.3
+          r += (isGlitch ? sv * bassEnergy * 2.8 * dm : sv * 0.15) + (sv > 0.6 ? bassImpact * 2.0 : 0)
+          chaosY = Math.sin(slowT * 1.2 + i * 0.8 + sv * 10) * bassEnergy * 0.7 * dm
         }
 
-        const h = y + Math.sin(angle * 2 + t * 1.5) * bassEnergy * 0.15 * dm
+        const h = y + Math.sin(angle * 2 + t * 1.5) * bassEnergy * 0.15 * dm + chaosY
 
         pArr[s * 3] = Math.cos(angle) * r
         pArr[s * 3 + 1] = h
         pArr[s * 3 + 2] = Math.sin(angle) * r
 
         const ct = (heightNorm + angle / (Math.PI * 2) * 0.2 + t * 0.04) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-        else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+        samplePalette(palette, ct, tc)
         const bri = 0.2 + (1 - heightNorm) * 0.3 + bassEnergy * 0.15
         cArr[s * 3] = tc.r * bri
         cArr[s * 3 + 1] = tc.g * bri
@@ -235,8 +243,7 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         pArr[p * 3 + 2] = Math.sin(angle) * radius
 
         const ct = (heightNorm + s / SPIRAL_LINES * 0.5 + t * 0.03) % 1
-        if (ct < 0.5) tc.lerpColors(palette.c, palette.a, ct * 2)
-        else tc.lerpColors(palette.a, palette.b, (ct - 0.5) * 2)
+        samplePalette(palette, ct + 0.33, tc)
         const bri = 0.12 + bassEnergy * 0.1 + bassImpact * 0.05
         cArr[p * 3] = tc.r * bri
         cArr[p * 3 + 1] = tc.g * bri
@@ -263,8 +270,7 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       mesh.scale.setScalar(pulse)
 
       const ct = (i / ORBIT_SHAPES + t * 0.05) % 1
-      if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-      else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+      samplePalette(palette, ct, tc)
       shapeMaterials[i].color.copy(tc)
       shapeMaterials[i].opacity = 0.2 + bassEnergy * 0.2 + bassImpact * 0.1
     })

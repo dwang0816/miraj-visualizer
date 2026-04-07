@@ -45,6 +45,14 @@ export class AudioAnalyzer {
   private _bassThreshold = 0.1
   private _subBassEnabled = true
 
+  // Auto-gain: continuously adapts sensitivity to keep visuals in the sweet spot
+  private _autoGain = false
+  private _autoGainTarget = 0.75        // ideal peak bass energy (0–1)
+  private _autoGainSpeed = 0.012        // how fast sensitivity adjusts per frame
+  private _peakRing = new Float32Array(120) // ~2 seconds at 60fps
+  private _peakRingIdx = 0
+  private _peakRingFull = false
+
   // Smoothed output values (0..1)
   private smoothBass = 0
   private smoothSubBass = 0
@@ -67,7 +75,7 @@ export class AudioAnalyzer {
     return this._sensitivity
   }
   set sensitivity(v: number) {
-    this._sensitivity = Math.max(0.1, Math.min(3.0, v))
+    this._sensitivity = Math.max(0.05, Math.min(5.0, v))
   }
 
   get bassBoost() {
@@ -82,6 +90,19 @@ export class AudioAnalyzer {
   }
   set subBassEnabled(v: boolean) {
     this._subBassEnabled = v
+  }
+
+  get autoGain() {
+    return this._autoGain
+  }
+  set autoGain(v: boolean) {
+    this._autoGain = v
+    if (v) {
+      // Reset peak ring when entering auto-gain so stale data doesn't skew it
+      this._peakRing.fill(0)
+      this._peakRingIdx = 0
+      this._peakRingFull = false
+    }
   }
 
   /** List available audio input devices */
@@ -359,11 +380,11 @@ export class AudioAnalyzer {
 
     // Normalize to 0-1 range with sensitivity
     const subBassNorm = this._subBassEnabled
-      ? Math.min(1, (subBassSum / (subBassEnd * 255)) * this._sensitivity * this._bassBoost)
+      ? Math.min(2, (subBassSum / (subBassEnd * 255)) * this._sensitivity * this._bassBoost)
       : 0
-    const bassNorm = Math.min(1, (bassSum / ((bassEnd - subBassEnd) * 255)) * this._sensitivity * this._bassBoost)
-    const midNorm = Math.min(1, (midSum / ((midEnd - bassEnd) * 255)) * this._sensitivity)
-    const highNorm = Math.min(1, (highSum / ((binCount - midEnd) * 255)) * this._sensitivity)
+    const bassNorm = Math.min(2, (bassSum / ((bassEnd - subBassEnd) * 255)) * this._sensitivity * this._bassBoost)
+    const midNorm = Math.min(2, (midSum / ((midEnd - bassEnd) * 255)) * this._sensitivity)
+    const highNorm = Math.min(2, (highSum / ((binCount - midEnd) * 255)) * this._sensitivity)
 
     // Adaptive smoothing for bass: fast attack, slow decay
     if (bassNorm > this.smoothBass) {
@@ -402,6 +423,34 @@ export class AudioAnalyzer {
 
     this.smoothBassImpact = impactValue
     this.prevBass = instantBass
+
+    // ── Auto-gain: track peaks and nudge sensitivity toward sweet spot ──
+    if (this._autoGain) {
+      // Push current bass energy into ring buffer
+      this._peakRing[this._peakRingIdx] = this.smoothBassEnergy
+      this._peakRingIdx++
+      if (this._peakRingIdx >= this._peakRing.length) {
+        this._peakRingIdx = 0
+        this._peakRingFull = true
+      }
+
+      // Find max in ring buffer
+      const len = this._peakRingFull ? this._peakRing.length : this._peakRingIdx
+      let recentPeak = 0
+      for (let i = 0; i < len; i++) {
+        if (this._peakRing[i] > recentPeak) recentPeak = this._peakRing[i]
+      }
+
+      // Only adjust when there's meaningful signal (avoid ramping up during silence or
+      // very quiet passages — that's what caused the "gets intense after a while" bug)
+      if (recentPeak > 0.08) {
+        const ratio = this._autoGainTarget / recentPeak
+        const targetSens = this._sensitivity * ratio
+        this._sensitivity += (targetSens - this._sensitivity) * this._autoGainSpeed
+        // Cap auto-gain at 2.5 — prevents runaway amplification during quiet passages
+        this._sensitivity = Math.max(0.05, Math.min(2.5, this._sensitivity))
+      }
+    }
 
     return {
       bass: this.smoothBass,

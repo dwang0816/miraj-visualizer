@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 const GRID_W = 120
 const GRID_H = 80
@@ -130,41 +130,31 @@ function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorM
       let h = fbm(x * 0.8, scrollZ * 0.8, t)
 
       if (visualStyle === 0) {
-        const d = Math.sqrt(x * x + z * z)
-        h += Math.sin(d * 2 - t * 4) * bassEnergy * 1.5 * dm
-        h += Math.sin(d * 4 - t * 6) * high * 0.4 * dm
-        // Pillar eruptions on bass impact
-        if (bassImpact > 0.4) {
-          const cellX = Math.floor((x + halfW) / 2)
-          const cellZ = Math.floor((z + halfH) / 2)
-          const cellHash = Math.sin(cellX * 127.1 + cellZ * 311.7) * 43758.5453
-          const cellVal = cellHash - Math.floor(cellHash)
-          if (cellVal > 0.85) {
-            h += bassImpact * 3.0 * dm
-          }
-        }
+        // Smooth: gentle rolling hills — fbm only, no eruptions at all
+        const d = Math.sqrt(x * x + scrollZ * scrollZ)
+        h += Math.sin(d * 1.0 - t * 2.2) * bassEnergy * 0.9 * dm
+        h += Math.cos(x * 0.6 + t * 1.4) * mid * 0.18
       } else if (visualStyle === 1) {
-        h += Math.sin(x * 1.5 - t * 5) * bassEnergy * 2 * dm
-        h += Math.cos(z * 2 + t * 3) * mid * 0.8 * dm
-        // Pillar eruptions
-        if (bassImpact > 0.4) {
-          const cellX = Math.floor((x + halfW) / 1.5)
-          const cellZ = Math.floor((z + halfH) / 1.5)
+        // Slight disorder: two crossed sine waves + occasional pillar burst on hard hits
+        h += Math.sin(x * 1.4 - t * 4.0) * bassEnergy * 1.5 * dm
+        h += Math.cos(scrollZ * 1.8 + t * 2.5) * mid * 0.6 * dm
+        if (bassImpact > 0.35) {
+          const cellX = Math.floor((x + halfW) / 2.5)
+          const cellZ = Math.floor((scrollZ + halfH) / 2.5)
           const cellHash = Math.sin(cellX * 71.1 + cellZ * 191.7) * 43758.5453
-          const cellVal = cellHash - Math.floor(cellHash)
-          if (cellVal > 0.9) {
-            h += bassImpact * 4.0 * dm * Math.sin(t * 6 + cellVal * 10)
-          }
+          const cellVal  = cellHash - Math.floor(cellHash)
+          if (cellVal > 0.78) h += bassImpact * 2.2 * dm
         }
       } else {
-        // Style 2: terrain fragments and reforms
-        const cellX = Math.floor((x + halfW) / 1.5)
-        const cellZ = Math.floor((z + halfH) / 1.5)
-        const cellHash = Math.sin(cellX * 127.1 + cellZ * 311.7) * 43758.5453
-        const cellVal = cellHash - Math.floor(cellHash)
-        const fragment = Math.sin(t * 3 + cellVal * 20) * bassEnergy * dm
-        h += fragment * 2.0 + (cellVal > 0.7 ? 1 : 0) * bassImpact * 3 * dm * Math.sin(t * 4 + cellVal * 10)
-        h += subBass * Math.sin(x * 0.5 + t) * 0.5
+        // Chaos: terrain freezes in spiked corruption, then snaps to new frozen shape
+        const cellX    = Math.floor((x + halfW) / 1.0)
+        const cellZ2   = Math.floor((scrollZ + halfH) / 1.0)
+        const cellHash = Math.sin(cellX * 127.1 + cellZ2 * 311.7) * 43758.5453
+        const cellVal  = cellHash - Math.floor(cellHash)
+        const slowT    = Math.floor(t * 0.8) / 0.8   // snaps ~every 1.25 s
+        const spike    = (cellVal > 0.5 ? 1 : 0) * bassEnergy * dm * 4.0 * Math.abs(Math.sin(slowT * 1.2 + cellVal * 15))
+        h += spike + Math.sin(slowT * 1.0 + cellVal * 20) * bassEnergy * dm * 1.5
+        h += (cellVal > 0.75 ? 1 : 0) * bassImpact * 5.0 * dm + subBass * Math.sin(x * 0.8 + slowT * 0.6) * 1.0
       }
 
       pArr[i * 3 + 1] = h
@@ -172,8 +162,7 @@ function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorM
       // Color by height with glow at peaks
       const hNorm = (h + 2) / 4
       const ct = (hNorm * 0.6 + t * 0.05) % 1
-      if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-      else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+      samplePalette(palette, ct, tc)
       const bri = 0.3 + Math.abs(hNorm) * 0.7
       // Extra glow at height peaks
       const peakGlow = Math.max(0, h - 1.5) * 0.3
@@ -206,8 +195,7 @@ function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorM
         ppArr[i * 3 + 2] = mz + Math.cos(t * 0.15 + phase) * 0.8
 
         const ct = (phase / (Math.PI * 2) + t * 0.04) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.c, ct * 2)
-        else tc.lerpColors(palette.c, palette.b, (ct - 0.5) * 2)
+        samplePalette(palette, ct + 0.5, tc)
         const bri = Math.min(0.4, 0.1 + bassEnergy * 0.2 + high * 0.15)
         pcArr[i * 3] = tc.r * bri
         pcArr[i * 3 + 1] = tc.g * bri

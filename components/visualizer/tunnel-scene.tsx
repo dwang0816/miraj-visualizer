@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 export type { ColorMode }
 
@@ -144,32 +144,38 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       if (z > 0) z -= TUNNEL_DEPTH
       ring.position.z = z
 
-      const pulseFactor = visualStyle === 1 ? Math.sin(t * 4 + i * 0.3) * 0.3 : 0
-      const baseScale = 1 + bassEnergy * 2.0 * dropMult + pulseFactor + bassImpact * 0.5
-      const breathe = 1 + Math.sin(t * 2 + i * 0.2) * 0.1 * mid
-      // Ring thickness pulse with bassEnergy
-      const thickScale = 1 + bassEnergy * 1.5 * dropMult
+      const riv_tunnel  = Math.sin(i * 127.1) * 43758.5453
+      const rvi_tunnel  = riv_tunnel - Math.floor(riv_tunnel)
+      const slowT_tun   = Math.floor(t * 0.8) / 0.8   // chaos stutter: snaps ~every 1.25 s
+      const pulseFactor = visualStyle === 1
+        ? Math.sin(t * 4 + i * 0.3) * 0.4
+        : visualStyle === 2 ? Math.sin(slowT_tun * 2.0 + i * 0.5) * 0.6 : 0
+      const chaosScale  = visualStyle === 2 ? rvi_tunnel * 1.8 : 0
+      const baseScale   = 1 + bassEnergy * (visualStyle === 2 ? 2.5 : 2.2) * dropMult + pulseFactor + bassImpact * (visualStyle === 2 ? 1.0 : 0.6) + chaosScale
+      const breathe     = 1 + Math.sin(t * 2 + i * 0.2) * 0.1 * mid
+      const thickScale  = 1 + bassEnergy * (visualStyle === 2 ? 2.0 : 1.5) * dropMult
       ring.scale.set(baseScale * breathe, baseScale * breathe, thickScale)
 
       if (visualStyle === 0) {
-        ring.rotation.z = t * 0.3 + i * 0.05 + mid * 2 + subBass * 0.5
+        // Smooth: rings glide forward with clean axial spin — steady hypnotic tunnel
+        ring.rotation.z = t * 0.18 + i * 0.04
+        ring.rotation.x = 0
+        ring.rotation.y = 0
       } else if (visualStyle === 1) {
-        ring.rotation.z = Math.sin(t + i * 0.1) * Math.PI * mid + bassImpact * 0.3
-        ring.rotation.x = Math.cos(t * 0.5 + i * 0.1) * 0.3 * high
+        // Slight disorder: rings wobble and tilt in unsynchronized sine rhythms
+        ring.rotation.z = t * 0.3 + i * 0.06 + mid * 1.8
+        ring.rotation.x = Math.sin(t * 1.5 + i * 0.12) * (0.35 + bassEnergy * 0.5) * high
+        ring.rotation.y = Math.cos(t * 0.9 + i * 0.09) * mid * 0.28
       } else {
-        // Style 2: asymmetric wobble patterns
-        ring.rotation.z = t * 0.1 + i * 0.1 + subBass * 0.3
-        ring.rotation.x = Math.sin(t * 0.8 + i * 0.25) * 0.7 * bassEnergy + Math.cos(t * 0.3 + i * 0.4) * 0.3
-        ring.rotation.y = Math.sin(t * 0.5 + i * 0.15) * 0.4 * mid
+        // Chaos: rings settle at frozen random orientations, stutter to new glitched angles
+        ring.rotation.z = rvi_tunnel * Math.PI * 2 + slowT_tun * (rvi_tunnel - 0.5) * 0.4 + bassEnergy * Math.sin(slowT_tun * 2 + i) * 0.8
+        ring.rotation.x = Math.sin(slowT_tun * 0.6 + rvi_tunnel * 15) * (1.2 + bassEnergy * 2.0) * dropMult
+        ring.rotation.y = Math.cos(slowT_tun * 0.5 + rvi_tunnel * 12 + Math.PI * rvi_tunnel) * (1.0 + bassEnergy * 1.8) * dropMult
       }
 
       const colorT = (progress + mid * 0.5 + t * 0.1 + bassImpact * 0.3) % 1
       const mat = ringMaterials[i]
-      if (colorT < 0.5) {
-        mat.color.lerpColors(palette.a, palette.b, colorT * 2)
-      } else {
-        mat.color.lerpColors(palette.b, palette.c, (colorT - 0.5) * 2)
-      }
+      samplePalette(palette, colorT, mat.color)
       mat.opacity = Math.min(0.4, 0.08 + bassEnergy * 0.2 * dropMult + (1 - progress) * 0.1 + bassImpact * 0.05)
     })
 
@@ -203,11 +209,7 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       pos.needsUpdate = true
 
       const pColorT = (t * 0.2 + mid + bassImpact * 0.2) % 1
-      if (pColorT < 0.5) {
-        particleMaterial.color.lerpColors(palette.a, palette.c, pColorT * 2)
-      } else {
-        particleMaterial.color.lerpColors(palette.c, palette.b, (pColorT - 0.5) * 2)
-      }
+      samplePalette(palette, pColorT + 0.5, particleMaterial.color)
       particleMaterial.size = 0.03 + bassEnergy * 0.04 * dropMult + bassImpact * 0.01
       particleMaterial.opacity = Math.min(0.4, 0.15 + bassEnergy * 0.15 + bassImpact * 0.05)
     }
@@ -251,8 +253,7 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
         // Color fading
         const ct = (lifeRatio + t * 0.1) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-        else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+        samplePalette(palette, ct, tc)
         const bri = Math.max(0, (1 - lifeRatio) * 0.6)
         cArr[i * 3] = tc.r * bri
         cArr[i * 3 + 1] = tc.g * bri

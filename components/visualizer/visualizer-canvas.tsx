@@ -10,7 +10,7 @@ import { AudioAnalyzer, type AudioDeviceInfo, type AudioSourceType } from "@/lib
 const TunnelScene = lazy(() => import("./tunnel-scene"))
 const WaveformScene = lazy(() => import("./waveform-scene"))
 const SphereScene = lazy(() => import("./sphere-scene"))
-const HelixScene = lazy(() => import("./helix-scene"))
+const TripleTorusScene = lazy(() => import("./triple-torus-scene"))
 const GalaxyScene = lazy(() => import("./galaxy-scene"))
 const FractalScene = lazy(() => import("./fractal-scene"))
 const RingsScene = lazy(() => import("./rings-scene"))
@@ -23,11 +23,11 @@ const VortexScene = lazy(() => import("./vortex-scene"))
 // ────────────────────────────────────────
 export const SCENE_LIST = [
   { id: "tunnel", label: "Tunnel" },
-  { id: "waveform", label: "Waveform" },
+  { id: "waveform", label: "Plasma" },
   { id: "sphere", label: "Sphere" },
-  { id: "helix", label: "Helix" },
+  { id: "tripleTorus", label: "Double torus" },
   { id: "galaxy", label: "Galaxy" },
-  { id: "fractal", label: "Fractal" },
+  { id: "fractal", label: "Flower" },
   { id: "rings", label: "Rings" },
   { id: "terrain", label: "Terrain" },
   { id: "matrix", label: "Matrix" },
@@ -59,18 +59,29 @@ function AudioBridge({
   analyzer,
   audioRef,
   onUpdate,
+  onSensitivityFeedback,
 }: {
   analyzer: AudioAnalyzer
   audioRef: React.MutableRefObject<AudioState>
   onUpdate: (data: AudioState) => void
+  onSensitivityFeedback?: (v: number) => void
 }) {
   const frameCount = useRef(0)
+  const lastFedSens = useRef(-1)
   useFrame(() => {
     const data = analyzer.update()
     audioRef.current = data
     frameCount.current++
     if (frameCount.current % 3 === 0) {
       onUpdate(data)
+      // Feed back auto-gain adjusted sensitivity to React state (~20fps)
+      if (analyzer.autoGain && onSensitivityFeedback) {
+        const s = Math.round(analyzer.sensitivity * 20) / 20 // snap to 0.05 steps
+        if (s !== lastFedSens.current) {
+          lastFedSens.current = s
+          onSensitivityFeedback(s)
+        }
+      }
     }
   })
   return null
@@ -157,8 +168,8 @@ function ActiveScene({
       return <WaveformScene {...props} />
     case "sphere":
       return <SphereScene {...props} />
-    case "helix":
-      return <HelixScene {...props} />
+    case "tripleTorus":
+      return <TripleTorusScene {...props} />
     case "galaxy":
       return <GalaxyScene {...props} />
     case "fractal":
@@ -184,7 +195,7 @@ export default function VisualizerCanvas() {
   const [isActive, setIsActive] = useState(false)
   const [sourceType, setSourceType] = useState<AudioSourceType | null>(null)
   const [sensitivity, setSensitivity] = useState(1.0)
-  const [colorMode, setColorMode] = useState<ColorMode>("neon")
+  const [colorMode, setColorMode] = useState<ColorMode>("euphoria")
   const [visualStyle, setVisualStyle] = useState(0)
   const [dropMode, setDropMode] = useState(false)
   const [activeScene, setActiveScene] = useState<SceneId>("tunnel")
@@ -193,7 +204,60 @@ export default function VisualizerCanvas() {
   const [fileName, setFileName] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [autoRotate, setAutoRotate] = useState(false)
+  const [autoGain, setAutoGain] = useState(false)
   const [djName, setDjName] = useState("")
+
+  // ── Scene transition state ──
+  const [renderedScene, setRenderedScene] = useState<SceneId>("tunnel")
+  const [transitionOpacity, setTransitionOpacity] = useState(0)
+  const transitionRef = useRef<{ active: boolean; phase: "out" | "in"; start: number; targetScene: SceneId } | null>(null)
+  const TRANSITION_DURATION = 600 // ms per half (total = 1.2s)
+
+  // Intercept scene changes to trigger transition
+  const changeScene = useCallback((newScene: SceneId) => {
+    setActiveScene((prev) => {
+      if (prev === newScene) return prev
+      // If mid-transition, immediately swap to the new target
+      if (transitionRef.current?.active) {
+        setRenderedScene(newScene)
+        transitionRef.current = { active: true, phase: "in", start: performance.now(), targetScene: newScene }
+      } else {
+        // Start fade-out transition
+        transitionRef.current = { active: true, phase: "out", start: performance.now(), targetScene: newScene }
+      }
+      return newScene
+    })
+  }, [])
+
+  // Run transition animation via requestAnimationFrame
+  useEffect(() => {
+    let raf: number
+    const tick = () => {
+      const t = transitionRef.current
+      if (!t || !t.active) { raf = requestAnimationFrame(tick); return }
+      const elapsed = performance.now() - t.start
+
+      if (t.phase === "out") {
+        const progress = Math.min(elapsed / TRANSITION_DURATION, 1)
+        setTransitionOpacity(progress)
+        if (progress >= 1) {
+          // At peak darkness, swap the rendered scene
+          setRenderedScene(t.targetScene)
+          transitionRef.current = { active: true, phase: "in", start: performance.now(), targetScene: t.targetScene }
+        }
+      } else {
+        const progress = Math.min(elapsed / TRANSITION_DURATION, 1)
+        setTransitionOpacity(1 - progress)
+        if (progress >= 1) {
+          transitionRef.current = null
+          setTransitionOpacity(0)
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   // Audio data ref: updated every frame inside R3F (no React re-renders)
   const audioRef = useRef<AudioState>(DEFAULT_AUDIO)
@@ -269,14 +333,27 @@ export default function VisualizerCanvas() {
     analyzerRef.current.sensitivity = sensitivity
   }, [sensitivity])
 
+  // Auto-gain sync
+  useEffect(() => {
+    analyzerRef.current.autoGain = autoGain
+  }, [autoGain])
+
+  // When user manually changes sensitivity, turn off auto-gain
+  const handleManualSensitivity = useCallback((v: number) => {
+    setAutoGain(false)
+    setSensitivity(v)
+  }, [])
+
+  const toggleAutoGain = useCallback(() => {
+    setAutoGain((prev) => !prev)
+  }, [])
+
   // Scene cycling
   const cycleScene = useCallback((direction: 1 | -1) => {
-    setActiveScene((prev) => {
-      const idx = SCENE_LIST.findIndex((s) => s.id === prev)
-      const next = (idx + direction + SCENE_LIST.length) % SCENE_LIST.length
-      return SCENE_LIST[next].id
-    })
-  }, [])
+    const idx = SCENE_LIST.findIndex((s) => s.id === activeScene)
+    const next = (idx + direction + SCENE_LIST.length) % SCENE_LIST.length
+    changeScene(SCENE_LIST[next].id)
+  }, [activeScene, changeScene])
 
   // ── Drag and drop ──
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -334,10 +411,12 @@ export default function VisualizerCanvas() {
           break
         case "Equal":
         case "NumpadAdd":
-          setSensitivity((s) => Math.min(2, s + 0.2))
+          setAutoGain(false)
+          setSensitivity((s) => Math.min(3, s + 0.2))
           break
         case "Minus":
         case "NumpadSubtract":
+          setAutoGain(false)
           setSensitivity((s) => Math.max(0.1, s - 0.2))
           break
         case "BracketRight":
@@ -360,7 +439,8 @@ export default function VisualizerCanvas() {
     }
   }, [isActive, handleStop, handleStartDevice, cycleScene])
 
-  // Auto-rotate timer: randomize scene + color + style + sensitivity every 15s
+  // Auto-rotate timer: randomize scene + color + style every 15s
+  // Sensitivity is no longer randomized — auto-gain handles it when enabled
   useEffect(() => {
     if (!autoRotate) return
     const interval = setInterval(() => {
@@ -368,15 +448,13 @@ export default function VisualizerCanvas() {
       const randomScene = SCENE_LIST[Math.floor(Math.random() * SCENE_LIST.length)].id
       const randomColor = colorModes[Math.floor(Math.random() * colorModes.length)]
       const randomStyle = Math.floor(Math.random() * 3) // 0, 1, or 2
-      const randomSensitivity = 0.6 + Math.random() * 1.0 // 0.6 to 1.6
-      
-      setActiveScene(randomScene)
+
+      changeScene(randomScene)
       setColorMode(randomColor)
       setVisualStyle(randomStyle)
-      setSensitivity(randomSensitivity)
     }, 15000)
     return () => clearInterval(interval)
-  }, [autoRotate])
+  }, [autoRotate, changeScene])
 
   const toggleAutoRotate = useCallback(() => {
     setAutoRotate((prev) => !prev)
@@ -418,9 +496,12 @@ export default function VisualizerCanvas() {
         style={{ background: "#030303" }}
       >
         {/* Audio bridge: updates ref every frame, throttles React state to ~20fps */}
-        <AudioBridge analyzer={analyzerRef.current} audioRef={audioRef} onUpdate={handleAudioUpdate} />
+        <AudioBridge analyzer={analyzerRef.current} audioRef={audioRef} onUpdate={handleAudioUpdate} onSensitivityFeedback={autoGain ? setSensitivity : undefined} />
         <IdleAnimation audioRef={audioRef} onUpdate={handleAudioUpdate} active={isActive} />
-        <CameraShake audioRef={audioRef} />
+        <CameraShake
+          audioRef={audioRef}
+          intensityScale={renderedScene === "tripleTorus" ? 0.3 : 1}
+        />
 
         {/* Scene */}
         <fog attach="fog" args={["#030303", 5, 40]} />
@@ -428,7 +509,7 @@ export default function VisualizerCanvas() {
 
         <Suspense fallback={null}>
           <ActiveScene
-            sceneId={activeScene}
+            sceneId={renderedScene}
             bass={audioState.bass}
             subBass={audioState.subBass}
             mid={audioState.mid}
@@ -444,8 +525,14 @@ export default function VisualizerCanvas() {
         {/* Post-processing bloom - tuned for comfortable viewing */}
         <EffectComposer>
           <Bloom
-            intensity={0.5 + audioState.bassEnergy * 0.6 + audioState.subBass * 0.2 + audioState.bassImpact * 0.15}
-            luminanceThreshold={0.45}
+            intensity={
+              0.5 +
+              audioState.bassEnergy * 0.6 +
+              audioState.subBass * 0.2 +
+              audioState.bassImpact * 0.15 +
+              (renderedScene === "tripleTorus" ? 0.16 + audioState.bassEnergy * 0.12 : 0)
+            }
+            luminanceThreshold={renderedScene === "tripleTorus" ? 0.36 : 0.45}
             luminanceSmoothing={0.9}
             mipmapBlur
           />
@@ -459,6 +546,14 @@ export default function VisualizerCanvas() {
           background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%)",
         }}
       />
+
+      {/* Scene transition overlay */}
+      {transitionOpacity > 0 && (
+        <div
+          className="pointer-events-none fixed inset-0 z-30"
+          style={{ backgroundColor: `rgba(3, 3, 3, ${transitionOpacity})` }}
+        />
+      )}
 
       {/* DJ Name — HTML overlay, immune to camera shake / 3D effects */}
       {djName && (
@@ -520,7 +615,9 @@ export default function VisualizerCanvas() {
         devices={devices}
         onRefreshDevices={handleRefreshDevices}
         sensitivity={sensitivity}
-        onSensitivityChange={setSensitivity}
+        onSensitivityChange={handleManualSensitivity}
+        autoGain={autoGain}
+        onAutoGainToggle={toggleAutoGain}
         colorMode={colorMode}
         onColorModeChange={setColorMode}
         visualStyle={visualStyle}
@@ -531,7 +628,7 @@ export default function VisualizerCanvas() {
         bassEnergy={audioState.bassEnergy}
         bassImpact={audioState.bassImpact}
         activeScene={activeScene}
-        onSceneChange={setActiveScene}
+        onSceneChange={changeScene}
         audioElement={audioElement}
         fileName={fileName}
         autoRotate={autoRotate}

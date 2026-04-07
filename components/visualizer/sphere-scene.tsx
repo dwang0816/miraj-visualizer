@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, memo } from "react"
 import { useFrame } from "@react-three/fiber"
 import * as THREE from "three"
-import { COLOR_PALETTES, type ColorMode } from "@/lib/color-palettes"
+import { COLOR_PALETTES, samplePalette, type ColorMode } from "@/lib/color-palettes"
 
 const POINT_COUNT = 4000
 const BASE_RADIUS = 2.5
@@ -153,8 +153,8 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     const arr = pos.array as Float32Array
     const cArr = col.array as Float32Array
 
-    const mainBass = bassEnergy * dropMult + bassImpact * 0.5
-    const subBassScale = 1 + subBass * 0.3
+    const mainBass = Math.min(0.8, bassEnergy * dropMult + bassImpact * 0.3)
+    const subBassScale = 1 + subBass * 0.1
 
     // Bass scatter effect: on impact, scatter particles outward, then snap back
     if (bassImpact > 0.5) {
@@ -180,22 +180,25 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       let displacement = 0
 
       if (visualStyle === 0) {
-        displacement = mainBass * 2.0 + Math.sin(t * 3 + i * 0.01) * mid * 0.3
+        // Smooth: all points breathe as one — perfect sphere pulse, no surface detail
+        displacement = mainBass * 1.4 + Math.sin(t * 0.8) * subBass * 0.35
       } else if (visualStyle === 1) {
-        const freq = 4 + high * 10
-        displacement =
-          mainBass * (0.5 + Math.abs(Math.sin(Math.atan2(oy, ox) * freq + t * 2)) * 2.0) +
-          mid * 0.3 * Math.sin(oz * 3 + t)
+        // Slight disorder: surface lobe pattern — sphere warps into multi-lobed star shape
+        const lon  = Math.atan2(oy, ox)
+        const lat  = Math.atan2(Math.sqrt(ox * ox + oy * oy), oz)
+        const lobe = Math.sin(lon * 4 + t * 2.0) * Math.sin(lat * 3 + t * 1.5)
+        displacement = mainBass * 0.9 + lobe * (0.55 + bassEnergy * 0.55) + mid * 0.22 * Math.cos(lat * 2 + t)
       } else {
-        displacement =
-          mainBass * Math.sin(oy * 2 + t * 2) * 1.5 +
-          subBass * Math.cos(ox * 2 - t) * 0.8 +
-          mid * Math.sin(ox * 3 - t * 3) * 0.5 +
-          high * Math.cos(oz * 4 + t) * 0.3
+        // Chaos: per-vertex hash frozen in glitched state — stutters slowly to new shape
+        const hv    = Math.sin(i * 127.1) * 43758.5453
+        const rv    = hv - Math.floor(hv)
+        const slowT = Math.floor(t * 1.2) / 1.2   // snaps ~every 0.8 s
+        const noise = Math.sin(rv * 25 + slowT * 0.5) * Math.cos(rv * 17 - slowT * 0.35)
+        displacement = noise * (0.7 + mainBass * 1.8) + high * Math.sin(ox * 4 + slowT) * 0.25
       }
 
       // Add scatter burst
-      const scatterDisp = scatter * (1 + Math.random() * 0.5) * 1.5
+      const scatterDisp = scatter * (visualStyle === 2 ? 1.2 + Math.random() * 0.4 : 0.5 + Math.random() * 0.2) * 0.6
 
       arr[ix] = (ox + nx * (displacement + scatterDisp)) * subBassScale
       arr[iy] = (oy + ny * (displacement + scatterDisp)) * subBassScale
@@ -204,8 +207,7 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       // Per-particle color based on displacement
       const dispMag = Math.abs(displacement + scatterDisp) / 4
       const ct = (dispMag + t * 0.08 + i * 0.0002) % 1
-      if (ct < 0.5) tc.lerpColors(palette.a, palette.b, ct * 2)
-      else tc.lerpColors(palette.b, palette.c, (ct - 0.5) * 2)
+      samplePalette(palette, ct, tc)
       const bri = Math.min(0.65, 0.2 + dispMag * 0.4 + bassEnergy * 0.15)
       cArr[ix] = tc.r * bri
       cArr[iy] = tc.g * bri
@@ -224,15 +226,11 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       line.rotation.y = t * speed * 0.7 + i * 0.5
       line.rotation.z = Math.sin(t * 0.5 + i) * 0.3 + subBass * 0.4
 
-      const scale = 1 + bassEnergy * 0.7 * dropMult + Math.sin(t * 2 + i) * mid * 0.2 + bassImpact * 0.3
+      const scale = 1 + bassEnergy * 0.25 * dropMult + Math.sin(t * 2 + i) * mid * 0.08 + bassImpact * 0.1
       line.scale.set(scale, scale, scale)
 
       const oColorT = (t * 0.15 + i * 0.33) % 1
-      if (oColorT < 0.5) {
-        orbitMaterials[i].color.lerpColors(palette.a, palette.c, oColorT * 2)
-      } else {
-        orbitMaterials[i].color.lerpColors(palette.c, palette.b, (oColorT - 0.5) * 2)
-      }
+      samplePalette(palette, oColorT, orbitMaterials[i].color)
       orbitMaterials[i].opacity = Math.min(0.45, 0.1 + bassEnergy * 0.2 + bassImpact * 0.1)
     })
 
@@ -249,7 +247,7 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         const angle = trailMeta[i * 4 + 1]
         const offset = trailMeta[i * 4 + 3]
 
-        const orbitScale = 1 + bassEnergy * 0.7 * dropMult + Math.sin(t * 2 + orbitIdx) * mid * 0.2
+        const orbitScale = 1 + bassEnergy * 0.25 * dropMult + Math.sin(t * 2 + orbitIdx) * mid * 0.08
         const r = BASE_RADIUS * 1.3 * orbitScale
 
         const orbitRot = t * (0.3 + orbitIdx * 0.15 + bassEnergy * 0.2)
@@ -272,8 +270,7 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         tArr[i * 3 + 2] = z2
 
         const ct = (angle * 0.1 + t * 0.05 + orbitIdx * 0.33) % 1
-        if (ct < 0.5) tc.lerpColors(palette.a, palette.c, ct * 2)
-        else tc.lerpColors(palette.c, palette.b, (ct - 0.5) * 2)
+        samplePalette(palette, ct + 0.5, tc)
         const bri = Math.min(0.4, 0.15 + bassEnergy * 0.2)
         tCArr[i * 3] = tc.r * bri
         tCArr[i * 3 + 1] = tc.g * bri
