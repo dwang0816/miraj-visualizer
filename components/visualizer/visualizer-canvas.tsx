@@ -127,17 +127,17 @@ function IdleAnimation({
 // ────────────────────────────────────────
 // Camera shake on bass hits (reads from ref for instant response)
 // ────────────────────────────────────────
-function CameraShake({ audioRef }: { audioRef: React.MutableRefObject<AudioState> }) {
+function CameraShake({ audioRef, intensityScale = 1 }: { audioRef: React.MutableRefObject<AudioState>; intensityScale?: number }) {
   useFrame(({ camera }) => {
     const { bassImpact, subBass } = audioRef.current
     if (bassImpact > 0.5) {
-      const intensity = bassImpact * 0.012
+      const intensity = bassImpact * 0.012 * intensityScale
       camera.position.x += (Math.random() - 0.5) * intensity
       camera.position.y += (Math.random() - 0.5) * intensity
       camera.rotation.z += (Math.random() - 0.5) * intensity * 0.15
     }
     if (subBass > 0.3) {
-      camera.position.z += Math.sin(Date.now() * 0.001) * subBass * 0.008
+      camera.position.z += Math.sin(Date.now() * 0.001) * subBass * 0.008 * intensityScale
     }
   })
   return null
