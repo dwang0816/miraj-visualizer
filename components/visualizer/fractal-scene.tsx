@@ -394,7 +394,6 @@ function FlowerScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     <group>
       {/* Breath rings: large expanding halos behind the flower */}
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={breathGeometry}
         material={breathMaterial}
       />
