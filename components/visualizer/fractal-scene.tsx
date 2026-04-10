@@ -399,13 +399,11 @@ function FlowerScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       />
       {/* Sacred geometry web */}
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={sacredGeometry}
         material={sacredMaterial}
       />
       {/* Flower of Life circle arcs */}
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={circleGeometry}
         material={circleMaterial}
       />
