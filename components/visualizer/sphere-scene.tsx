@@ -94,6 +94,11 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     []
   )
 
+  const orbitLines = useMemo(
+    () => orbitGeometries.map((geo, i) => new THREE.Line(geo, orbitMaterials[i])),
+    [orbitGeometries, orbitMaterials]
+  )
+
   // Orbit trail particles
   const trailMeta = useMemo(() => {
     const meta = new Float32Array(TRAIL_COUNT * 4) // orbitIndex, angle, speed, offset
@@ -290,12 +295,11 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
   return (
     <group ref={groupRef}>
       <points ref={pointsRef} geometry={pointsGeometry} material={pointsMaterial} />
-      {orbitGeometries.map((geo, i) => (
-        <line
+      {orbitLines.map((lineObj, i) => (
+        <primitive
           key={i}
+          object={lineObj}
           ref={(el: any) => { if (el) orbitRefs.current[i] = el }}
-          geometry={geo}
-          material={orbitMaterials[i]}
         />
       ))}
       <points ref={trailRef} geometry={trailGeometry} material={trailMaterial} />

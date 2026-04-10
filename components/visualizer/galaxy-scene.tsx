@@ -88,6 +88,11 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     )
   }, [])
 
+  const radialLines = useMemo(
+    () => radialGeometries.map((geo, i) => new THREE.Line(geo, radialMaterials[i])),
+    [radialGeometries, radialMaterials]
+  )
+
   // Stacked wireframe disc layers (like terrain but circular)
   const layerGeometries = useMemo(() => {
     return Array.from({ length: DISC_LAYERS }, (_, layer) => {
@@ -285,12 +290,11 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
           material={ringMaterials[i]}
         />
       ))}
-      {radialGeometries.map((geo, i) => (
-        <line
+      {radialLines.map((lineObj, i) => (
+        <primitive
           key={`rad-${i}`}
+          object={lineObj}
           ref={(el: any) => { if (el) radialsRef.current[i] = el }}
-          geometry={geo}
-          material={radialMaterials[i]}
         />
       ))}
       {layerGeometries.map((geo, i) => (

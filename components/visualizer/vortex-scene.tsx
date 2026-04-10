@@ -85,6 +85,11 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     )
   }, [])
 
+  const spiralLines = useMemo(
+    () => spiralGeometries.map((geo, i) => new THREE.Line(geo, spiralMaterials[i])),
+    [spiralGeometries, spiralMaterials]
+  )
+
   // Orbiting wireframe shapes
   const shapeGeometries = useMemo(() => {
     return Array.from({ length: ORBIT_SHAPES }, (_, i) => {
@@ -290,12 +295,11 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
           material={ringMaterials[i]}
         />
       ))}
-      {spiralGeometries.map((geo, i) => (
-        <line
+      {spiralLines.map((lineObj, i) => (
+        <primitive
           key={`spiral-${i}`}
+          object={lineObj}
           ref={(el: any) => { if (el) spiralsRef.current[i] = el }}
-          geometry={geo}
-          material={spiralMaterials[i]}
         />
       ))}
       {shapeGeometries.map((geo, i) => (

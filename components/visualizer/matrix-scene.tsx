@@ -120,6 +120,11 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     )
   }, [])
 
+  const scanLines = useMemo(
+    () => scanGeometries.map((geo, i) => new THREE.Line(geo, scanMaterials[i])),
+    [scanGeometries, scanMaterials]
+  )
+
   useEffect(() => {
     return () => {
       layerGeometries.forEach(g => g.dispose())
@@ -258,12 +263,11 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
           material={shapeMaterials[i]}
         />
       ))}
-      {scanGeometries.map((geo, i) => (
-        <line
+      {scanLines.map((lineObj, i) => (
+        <primitive
           key={`scan-${i}`}
+          object={lineObj}
           ref={(el: any) => { if (el) scanRef.current[i] = el }}
-          geometry={geo}
-          material={scanMaterials[i]}
         />
       ))}
     </group>
