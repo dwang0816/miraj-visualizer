@@ -262,7 +262,6 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         <line
           key={`scan-${i}`}
           ref={(el: any) => { if (el) scanRef.current[i] = el }}
-          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={scanMaterials[i]}
         />

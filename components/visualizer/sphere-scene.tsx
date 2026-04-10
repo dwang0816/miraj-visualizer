@@ -294,7 +294,6 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         <line
           key={i}
           ref={(el: any) => { if (el) orbitRefs.current[i] = el }}
-          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={orbitMaterials[i]}
         />

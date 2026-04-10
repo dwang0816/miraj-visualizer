@@ -289,7 +289,6 @@ function GalaxyScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         <line
           key={`rad-${i}`}
           ref={(el: any) => { if (el) radialsRef.current[i] = el }}
-          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={radialMaterials[i]}
         />

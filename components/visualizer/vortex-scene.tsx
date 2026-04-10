@@ -294,7 +294,6 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         <line
           key={`spiral-${i}`}
           ref={(el: any) => { if (el) spiralsRef.current[i] = el }}
-          // @ts-expect-error R3F line element accepts geometry
           geometry={geo}
           material={spiralMaterials[i]}
         />

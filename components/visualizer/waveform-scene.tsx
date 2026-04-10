@@ -353,12 +353,10 @@ function WaveformScene({
   return (
     <group ref={groupRef}>
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={webGeo}
         material={webMat}
       />
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={hubGeo}
         material={hubMat}
       />

@@ -357,7 +357,6 @@ function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMod
         />
       ))}
       <lineSegments
-        // @ts-expect-error R3F lineSegments accepts geometry prop
         geometry={connGeometry}
         material={connMaterial}
       />
