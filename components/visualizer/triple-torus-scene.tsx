@@ -529,14 +529,15 @@ function TripleTorusScene({
   }, [starfieldGeometry, starfieldMaterial])
 
   useFrame((_, delta) => {
-    timeRef.current = (timeRef.current + delta) % (Math.PI * 200)
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dm = dropMode ? 1.5 : 1
     const tc = tmpColor.current
 
     // Wrap scroll to prevent floating-point precision loss after long sessions
-    scrollRef.current = (scrollRef.current + delta * (0.65 + subBass * 1.6) * dm) % (Math.PI * 200)
+    scrollRef.current = (scrollRef.current + d * (0.65 + subBass * 1.6) * dm) % (Math.PI * 200)
 
     {
       const mesh = backdropRef.current
@@ -695,14 +696,14 @@ function TripleTorusScene({
 
     if (spinRef.current) {
       const spinSpeed = 0.88 + bassEnergy * 0.58 * dm + mid * 0.24
-      spinRef.current.rotation.y += delta * spinSpeed
-      spinRef.current.rotation.x += delta * (0.32 + subBass * 0.38 * dm)
-      spinRef.current.rotation.z += delta * (0.2 + high * 0.22 * dm)
+      spinRef.current.rotation.y += d * spinSpeed
+      spinRef.current.rotation.x += d * (0.32 + subBass * 0.38 * dm)
+      spinRef.current.rotation.z += d * (0.2 + high * 0.22 * dm)
     }
 
     if (innerSpinRef.current) {
       const innerYaw = 1.05 + bassEnergy * 0.72 * dm + mid * 0.31
-      innerSpinRef.current.rotation.y += delta * innerYaw
+      innerSpinRef.current.rotation.y += d * innerYaw
     }
 
     const scroll = scrollRef.current

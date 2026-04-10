@@ -103,7 +103,8 @@ function IdleAnimation({
   const frameCount = useRef(0)
   useFrame((_, delta) => {
     if (active) return
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const bassVal = 0.25 + Math.sin(t * 1.2) * 0.15 + Math.sin(t * 0.4) * 0.1
     const subBassVal = 0.2 + Math.sin(t * 0.8) * 0.1

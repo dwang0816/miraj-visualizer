@@ -178,7 +178,8 @@ function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMod
   }, [stripGeometries, stripMaterials, connGeometry, connMaterial, particleGeometry, particleMaterial])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t   = timeRef.current
     const pal = COLOR_PALETTES[colorMode]
     const dm  = dropMode ? 1.5 : 1
@@ -187,7 +188,7 @@ function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMod
 
     // Advance each strip's u-scroll offset — creates independent flowing motion
     for (let si = 0; si < STRIP_COUNT; si++) {
-      uOffsets.current[si] += delta * STRIP_U_SPEEDS[si] * (1 + bassEnergy * 0.4)
+      uOffsets.current[si] += d * STRIP_U_SPEEDS[si] * (1 + bassEnergy * 0.4)
     }
 
     // ── Update Möbius strips ─────────────────────────────────────────────
@@ -309,7 +310,7 @@ function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMod
         const speed = particleMeta[i * 5 + 3]
         const phase = particleMeta[i * 5 + 4]
 
-        particleMeta[i * 5 + 1] += delta * speed * (0.5 + bassEnergy * 0.4)
+        particleMeta[i * 5 + 1] += d * speed * (0.5 + bassEnergy * 0.4)
         const u    = particleMeta[i * 5 + 1] + uOffsets.current[si]
         const half = u / 2
         const r    = STRIP_RADIUS + vn * STRIP_WIDTH * Math.cos(half) + 0.1 + Math.sin(t * 1.5 + phase) * 0.08
@@ -342,7 +343,7 @@ function RingsScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMod
 
     // ── Global slow rotation — makes the armillary sphere effect visible ──
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.07 * (1 + bassEnergy * 0.2)
+      groupRef.current.rotation.y += d * 0.07 * (1 + bassEnergy * 0.2)
       groupRef.current.rotation.x  = Math.sin(t * 0.25) * 0.15 + subBass * 0.04
     }
   })

@@ -131,7 +131,8 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
   }, [ringGeometry, particleGeometry, sparkGeometry, sparkMaterial, particleMaterial, ringMaterials])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dropMult = dropMode ? 1.5 : 1.0
@@ -190,7 +191,7 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         const iz = i * 3 + 2
 
         const speed = (1 + high * 4 + bassEnergy * 2) * dropMult
-        arr[iz] += particleData.velocities[iz] * speed * 60 * delta
+        arr[iz] += particleData.velocities[iz] * speed * 60 * d
 
         const angle = Math.atan2(arr[iy], arr[ix])
         const r = Math.sqrt(arr[ix] * arr[ix] + arr[iy] * arr[iy])
@@ -223,7 +224,7 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       const tc = tmpColor.current
 
       for (let i = 0; i < SPARK_COUNT; i++) {
-        sparkData.meta[i * 2] += delta
+        sparkData.meta[i * 2] += d
 
         if (bassImpact > 0.4 && sparkData.meta[i * 2] > sparkData.meta[i * 2 + 1]) {
           // Respawn spark on bass hit
@@ -247,9 +248,9 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         const lifeRatio = Math.min(1, life / maxLife)
 
         // Move outward
-        pArr[i * 3] += sparkData.velocities[i * 3] * delta * (1 - lifeRatio * 0.5)
-        pArr[i * 3 + 1] += sparkData.velocities[i * 3 + 1] * delta * (1 - lifeRatio * 0.5)
-        pArr[i * 3 + 2] += sparkData.velocities[i * 3 + 2] * delta
+        pArr[i * 3] += sparkData.velocities[i * 3] * d * (1 - lifeRatio * 0.5)
+        pArr[i * 3 + 1] += sparkData.velocities[i * 3 + 1] * d * (1 - lifeRatio * 0.5)
+        pArr[i * 3 + 2] += sparkData.velocities[i * 3 + 2] * d
 
         // Color fading
         const ct = (lifeRatio + t * 0.1) % 1
@@ -265,7 +266,7 @@ function TunnelScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     }
 
     if (groupRef.current) {
-      groupRef.current.rotation.z += delta * 0.05 * (1 + bassEnergy * 0.7)
+      groupRef.current.rotation.z += d * 0.05 * (1 + bassEnergy * 0.7)
     }
   })
 

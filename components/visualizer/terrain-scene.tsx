@@ -103,13 +103,14 @@ function TerrainScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorM
   }, [geometry, material, particleGeometry, particleMaterial])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dm = dropMode ? 1.5 : 1
 
     // Scroll terrain toward camera driven by subBass (synthwave aesthetic)
-    scrollRef.current += delta * (0.8 + subBass * 2.0) * dm
+    scrollRef.current += d * (0.8 + subBass * 2.0) * dm
 
     if (!meshRef.current) return
     const pos = geometry.attributes.position as THREE.BufferAttribute

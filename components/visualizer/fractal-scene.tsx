@@ -192,7 +192,8 @@ function FlowerScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       breathGeometry, breathMaterial, particleGeometry, particleMaterial, particleTexture])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t        = timeRef.current
     const palette  = COLOR_PALETTES[colorMode]
     const dm       = dropMode ? 1.5 : 1
@@ -366,7 +367,7 @@ function FlowerScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
         const speed = particleMeta[pi * 4 + 2]
         const phase = particleMeta[pi * 4 + 3]
 
-        particleMeta[pi * 4 + 1] += delta * speed * (0.4 + bassEnergy * 0.6)
+        particleMeta[pi * 4 + 1] += d * speed * (0.4 + bassEnergy * 0.6)
         const a     = particleMeta[pi * 4 + 1]
         const rNorm = ro[ci] / HEX_RINGS
         const R     = BASE_R * SCALE * (1 + mainBass * 0.1)

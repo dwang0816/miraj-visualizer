@@ -142,7 +142,8 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
   }, [ringGeometries, ringMaterials, spiralGeometries, spiralMaterials, shapeGeometries, shapeMaterials, shockwaveGeo, shockwaveMat])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dm = dropMode ? 1.5 : 1
@@ -150,7 +151,7 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
     // Shockwave on bass impact
     if (bassImpact > 0.5) shockwaveAge.current = 0
-    shockwaveAge.current += delta * 2.5
+    shockwaveAge.current += d * 2.5
 
     if (shockwaveRef.current) {
       const age = shockwaveAge.current
@@ -281,7 +282,7 @@ function VortexScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     })
 
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.15 * (1 + bassEnergy * 0.2 * dm)
+      groupRef.current.rotation.y += d * 0.15 * (1 + bassEnergy * 0.2 * dm)
     }
   })
 

@@ -147,7 +147,8 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
   useFrame((_, delta) => {
     if (!pointsRef.current) return
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dropMult = dropMode ? 1.5 : 1.0
@@ -248,7 +249,7 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
 
       for (let i = 0; i < TRAIL_COUNT; i++) {
         const orbitIdx = Math.floor(trailMeta[i * 4]) % ORBIT_COUNT
-        trailMeta[i * 4 + 1] += delta * trailMeta[i * 4 + 2] * (1 + bassEnergy * 2)
+        trailMeta[i * 4 + 1] += d * trailMeta[i * 4 + 2] * (1 + bassEnergy * 2)
         const angle = trailMeta[i * 4 + 1]
         const offset = trailMeta[i * 4 + 3]
 
@@ -287,7 +288,7 @@ function SphereScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
     }
 
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.2 * (1 + bassEnergy * 0.7)
+      groupRef.current.rotation.y += d * 0.2 * (1 + bassEnergy * 0.7)
       groupRef.current.rotation.x = Math.sin(t * 0.3) * 0.15 + subBass * 0.1
     }
   })

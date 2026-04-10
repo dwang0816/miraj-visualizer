@@ -137,13 +137,14 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
   }, [layerGeometries, layerMaterials, shapeGeometries, shapeMaterials, scanGeometries, scanMaterials])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t = timeRef.current
     const palette = COLOR_PALETTES[colorMode]
     const dm = dropMode ? 1.5 : 1
     const tc = tmpColor.current
 
-    scrollRef.current += delta * (1.5 + bassEnergy * 3) * dm
+    scrollRef.current += d * (1.5 + bassEnergy * 3) * dm
 
     // Animate wireframe grid layers
     layersRef.current.forEach((mesh, layer) => {
@@ -214,7 +215,7 @@ function MatrixScene({ bass, subBass, mid, high, bassEnergy, bassImpact, colorMo
       const speed = shapeMeta[i * 5 + 2]
       const phase = shapeMeta[i * 5 + 3]
 
-      shapeMeta[i * 5 + 1] -= delta * speed * (1 + bassEnergy * 2) * dm
+      shapeMeta[i * 5 + 1] -= d * speed * (1 + bassEnergy * 2) * dm
       if (shapeMeta[i * 5 + 1] < -halfH - 2) {
         shapeMeta[i * 5 + 1] = halfH + 2 + Math.random() * 4
         shapeMeta[i * 5] = (Math.random() - 0.5) * halfW * 2

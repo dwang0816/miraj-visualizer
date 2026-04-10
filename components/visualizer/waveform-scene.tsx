@@ -162,7 +162,8 @@ function WaveformScene({
   }, [webGeo, webMat, hubGeo, hubMat, sparkGeo, sparkMat, glowTex])
 
   useFrame((_, delta) => {
-    timeRef.current += delta
+    const d = Math.min(delta, 1 / 30)
+    timeRef.current = (timeRef.current + d) % (Math.PI * 200)
     const t      = timeRef.current
     const pal    = COLOR_PALETTES[colorMode]
     const dm     = dropMode ? 1.5 : 1
@@ -297,7 +298,7 @@ function WaveformScene({
         const type  = sparkMeta[i*4]
         const which = sparkMeta[i*4+1]
         const spd   = sparkMeta[i*4+3]
-        sparkMeta[i*4+2] = (sparkMeta[i*4+2] + delta * spd * sparkSpd) % 1
+        sparkMeta[i*4+2] = (sparkMeta[i*4+2] + d * spd * sparkSpd) % 1
         const phase = sparkMeta[i*4+2]
 
         let sx = 0, sy = 0, sz = 0
@@ -345,7 +346,7 @@ function WaveformScene({
       // X tilt gives a "god's eye" perspective without going fully face-on
       groupRef.current.rotation.x = -0.30 + Math.sin(t * 0.12) * 0.04 + subBass * 0.03
       if (visualStyle !== 2) {
-        groupRef.current.rotation.z += delta * 0.024 * (1 + energy * 0.25)
+        groupRef.current.rotation.z += d * 0.024 * (1 + energy * 0.25)
       }
     }
   })
